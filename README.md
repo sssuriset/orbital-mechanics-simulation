@@ -1,38 +1,37 @@
-# Orbital Mechanics Simulation
+# Energy Conservation and Timestep Sensitivity in Numerical Orbital Simulations
 
-This project simulates orbital motion using numerical integration methods and analyzes energy conservation over time.
-
-## Overview
-
-A two-body orbital system was modeled using Newton’s law of gravitation. The simulation computes position and velocity updates over time to produce a trajectory and evaluate system energy.
-
-## Results
-
-The simulation produces:
-
-- A stable orbital trajectory
-- Near-constant total energy (verifying numerical accuracy)
+This project compares three numerical integration methods for simulating two-body orbital motion around Earth: Euler, semi-implicit Euler, and Velocity Verlet. The goal is to evaluate how timestep size affects orbital stability, energy conservation, angular momentum conservation, and orbital period accuracy.
 
 ## Methods
 
-- Numerical integration
-- Position and velocity updates over time
-- Energy calculation
+The simulation models a satellite in Earth orbit using Newtonian gravity. Each method is tested with timestep values of 1, 5, 10, 30, 60, 120, and 300 seconds over a seven-day simulation. The same initial position and velocity are used for all methods.
 
-## Technologies Used
+The tested methods are:
+- Euler
+- Semi-implicit Euler
+- Velocity Verlet
 
-- Python
-- NumPy
-- Matplotlib
+## Metrics
 
-## Visualizations
+The simulation records:
+- total mechanical energy drift
+- angular momentum drift
+- final orbital radius error
+- orbital period error
+- runtime
 
-### Orbital Trajectory
-![Orbit](orbit_trajectory.png)
+## Results
 
-### Energy Conservation
-![Energy](energy_plot.png)
+The results show that timestep size strongly affects numerical stability. Euler integration accumulates the largest energy drift as timestep increases. Semi-implicit Euler improves stability but still shows significant error at larger timesteps. Velocity Verlet maintains much lower energy drift across the tested timestep range and produces more stable orbital trajectories.
 
-## Significance
+## Output Files
 
-This project demonstrates fundamental physics simulation and validates numerical methods through energy conservation.
+The script saves result figures and a CSV file in the `results` folder.
+
+Generated files include:
+- `orbitcomparison.png`
+- `energycomparison.png`
+- `angmomcomparison.png`
+- `timestepsensitivity.png`
+- `perioderror.png`
+- `results.csv`
