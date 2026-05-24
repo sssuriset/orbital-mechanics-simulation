@@ -57,13 +57,22 @@ def findperiod(pos, dt):
     crosses = []
 
     for i in range(1, len(y)):
-        if y[i - 1] < 0 and y[i] >= 0 and x[i] > 0:
-            crosses.append(i * dt)
+        if y[i - 1] < 0 and y[i] >= 0:
+            frac = -y[i - 1] / (y[i] - y[i - 1])
+            tcross = (i - 1 + frac) * dt
+            xcross = x[i - 1] + frac * (x[i] - x[i - 1])
+
+            if xcross > 0:
+                crosses.append(tcross)
 
     if len(crosses) == 0:
         return None
 
-    return crosses[0]
+    if len(crosses) == 1:
+        return crosses[0]
+
+    periods = np.diff(crosses)
+    return np.mean(periods)
 
 
 def runsim(method, dt):
@@ -73,16 +82,17 @@ def runsim(method, dt):
     v = vzero.copy()
     a = accel(r)
 
-    pos = []
-    en = []
-    am = []
+    pos = [r.copy()]
+    en = [energy(r, v)]
+    am = [angmom(r, v)]
 
     start = time.time()
 
     for _ in range(steps):
         if method == "Euler":
+            aold = accel(r)
             r = r + v * dt
-            v = v + accel(r) * dt
+            v = v + aold * dt
 
         elif method == "Semi-Implicit Euler":
             v = v + accel(r) * dt
@@ -110,8 +120,6 @@ def runsim(method, dt):
     edrift = ((en[-1] - en[0]) / abs(en[0])) * 100
     ldrift = ((am[-1] - am[0]) / abs(am[0])) * 100
 
-    raderr = np.linalg.norm(pos[-1]) - np.linalg.norm(rzero)
-
     mperiod = findperiod(pos, dt)
     tperiod = trueperiod()
 
@@ -126,11 +134,16 @@ def runsim(method, dt):
         "am": am,
         "edrift": edrift,
         "ldrift": ldrift,
-        "raderr": raderr,
         "runtime": runtime,
         "mperiod": mperiod,
         "perr": perr
     }
+
+
+# reference simulation
+ref_dt = 0.5
+ref = runsim("Velocity Verlet", ref_dt)
+ref_final_pos = ref["pos"][-1]
 
 
 # run simulations
@@ -140,13 +153,15 @@ for dt in dtvals:
     data[dt] = {}
 
     for method in methods:
-        data[dt][method] = runsim(method, dt)
+        result = runsim(method, dt)
+        result["position_error"] = np.linalg.norm(result["pos"][-1] - ref_final_pos)
+        data[dt][method] = result
 
 
 # print table
 print("\nOrbital Integrator Results")
-print("Method | dt (s) | Energy Drift (%) | Angular Momentum Drift (%) | Radius Error (m) | Period Error (%) | Runtime (s)")
-print("-" * 130)
+print("Method | dt (s) | Energy Drift (%) | Angular Momentum Drift (%) | Final Position Error (m) | Period Error (%) | Runtime (s)")
+print("-" * 145)
 
 for dt in dtvals:
     for method in methods:
@@ -158,7 +173,7 @@ for dt in dtvals:
             f"{method} | {dt} | "
             f"{row['edrift']:.6f} | "
             f"{row['ldrift']:.6f} | "
-            f"{row['raderr']:.2f} | "
+            f"{row['position_error']:.2f} | "
             f"{ptext} | "
             f"{row['runtime']:.4f}"
         )
@@ -175,7 +190,7 @@ with open(csvpath, "w", newline="") as file:
         "dt",
         "edrift",
         "ldrift",
-        "raderr",
+        "position_error",
         "mperiod",
         "perr",
         "runtime"
@@ -190,7 +205,7 @@ with open(csvpath, "w", newline="") as file:
                 dt,
                 row["edrift"],
                 row["ldrift"],
-                row["raderr"],
+                row["position_error"],
                 row["mperiod"],
                 row["perr"],
                 row["runtime"]
@@ -287,5 +302,21 @@ plt.title("Orbital Period Error by Timestep")
 plt.legend()
 plt.grid()
 plt.savefig("results/perioderror.png", dpi=300)
+
+
+# figure 6: final position error
+plt.figure(figsize=(8, 5))
+
+for method in methods:
+    errors = [data[dt][method]["position_error"] for dt in dtvals]
+    plt.plot(dtvals, errors, marker="o", label=method)
+
+plt.xlabel("Timestep, dt (s)")
+plt.ylabel("Final Position Error vs Reference (m)")
+plt.title("Final Position Error Compared with High-Accuracy Reference")
+plt.yscale("log")
+plt.legend()
+plt.grid()
+plt.savefig("results/positionerror.png", dpi=300)
 
 plt.show()
